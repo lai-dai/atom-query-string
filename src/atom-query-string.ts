@@ -38,16 +38,25 @@ function toNumberable(value: any): any {
   }
 }
 
-function parseQueryString(searchParams: string) {
+function parseQueryString<Value>(searchParams: string, initialValue: Value) {
   const output: Record<string, any> = {};
   const urlParams = new URLSearchParams(searchParams);
 
   // Set will return only unique keys()
   new Set([...urlParams.keys()]).forEach((key) => {
+    const numberType =
+      (initialValue instanceof Object &&
+        key in initialValue &&
+        typeof initialValue[key as keyof typeof initialValue] === "number") ||
+      initialValue instanceof Number;
     output[key] =
       urlParams.getAll(key).length > 1
-        ? toNumberable(urlParams.getAll(key))
-        : toNumberable(urlParams.get(key));
+        ? numberType
+          ? toNumberable(urlParams.getAll(key))
+          : urlParams.getAll(key)
+        : numberType
+        ? toNumberable(urlParams.get(key))
+        : urlParams.get(key);
   });
 
   return output;
@@ -68,9 +77,10 @@ function stringifyQueryString(obj: Record<string, any>) {
     .join("&");
 }
 
-function createQueryString(): QueryString {
+function createQueryString<Value>(initialValue: Value): QueryString {
   return {
-    parse: parseQueryString,
+    parse: (searchParams) =>
+      parseQueryString<Value>(searchParams, initialValue),
     stringify: stringifyQueryString,
   };
 }
@@ -80,7 +90,7 @@ export const atomWithQueryString = <Value extends object>(
   {
     onValueChange,
     onPathnameChange,
-    queryString = createQueryString(),
+    queryString = createQueryString<Value>(initialValue),
     isSyncPathname = true,
   }: AtomWithQueryStringOptions<Value> = {}
 ) => {

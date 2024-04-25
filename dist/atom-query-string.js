@@ -45,11 +45,12 @@ function toNumberable(value) {
       return value;
   }
 }
-function parseQueryString(searchParams) {
+function parseQueryString(searchParams, initialValue) {
   const output = {};
   const urlParams = new URLSearchParams(searchParams);
   (/* @__PURE__ */ new Set([...urlParams.keys()])).forEach((key) => {
-    output[key] = urlParams.getAll(key).length > 1 ? toNumberable(urlParams.getAll(key)) : toNumberable(urlParams.get(key));
+    const numberType = initialValue instanceof Object && key in initialValue && typeof initialValue[key] === "number" || initialValue instanceof Number;
+    output[key] = urlParams.getAll(key).length > 1 ? numberType ? toNumberable(urlParams.getAll(key)) : urlParams.getAll(key) : numberType ? toNumberable(urlParams.get(key)) : urlParams.get(key);
   });
   return output;
 }
@@ -67,16 +68,16 @@ function stringifyQueryString(obj) {
     return encodeURIComponent(key) + "=" + encodeURIComponent(value);
   }).join("&");
 }
-function createQueryString() {
+function createQueryString(initialValue) {
   return {
-    parse: parseQueryString,
+    parse: (searchParams) => parseQueryString(searchParams, initialValue),
     stringify: stringifyQueryString
   };
 }
 var atomWithQueryString = (initialValue, {
   onValueChange,
   onPathnameChange,
-  queryString = createQueryString(),
+  queryString = createQueryString(initialValue),
   isSyncPathname = true
 } = {}) => {
   const baseAtom = (0, import_utils.atomWithReset)(initialValue);
