@@ -8,10 +8,6 @@ type SetStateActionWithReset<Value> =
   | typeof RESET
   | ((prev: Value) => Value);
 
-type WithInitialValue<Value> = {
-  initialValue: Value;
-};
-
 export interface QueryString<Value> {
   parse: (str: string, initialValue: Value) => Value;
   stringify: (obj: Value) => string;
@@ -131,12 +127,11 @@ export function atomWithQueryString<Value extends object>(
     queryString = defaultQueryString as QueryString<Value>,
     getOnInit,
   }: AtomWithQueryStringOptions<Value> = {}
-): WritableAtom<Value, [SetStateActionWithReset<Value>, boolean], void> &
-  WithInitialValue<Value> {
+) {
   const baseAtom = atom(
     getOnInit ? queryString.get(initialValue) : initialValue
   );
-  const anAtom = atom<Value, [SetStateActionWithReset<Value>, boolean], void>(
+  const anAtom = atom(
     (get) => get(baseAtom),
     (
       get,
@@ -185,12 +180,5 @@ export function atomWithQueryString<Value extends object>(
     return unsub;
   };
 
-  (anAtom as Record<string, any>)["initialValue"] = initialValue;
-
-  return anAtom as WritableAtom<
-    Value,
-    [SetStateActionWithReset<Value>, boolean],
-    void
-  > &
-    WithInitialValue<Value>;
+  return anAtom;
 }

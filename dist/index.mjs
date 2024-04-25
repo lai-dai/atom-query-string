@@ -117,7 +117,6 @@ function atomWithQueryString(initialValue, {
     }
     return unsub;
   };
-  anAtom["initialValue"] = initialValue;
   return anAtom;
 }
 export {
