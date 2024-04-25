@@ -116,7 +116,7 @@ function atomWithQueryString(initialValue, {
       }
     }
   );
-  Object.assign(anAtom, { init: initialValue });
+  anAtom["init"] = initialValue;
   return anAtom;
 }
 export {

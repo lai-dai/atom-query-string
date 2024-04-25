@@ -19,7 +19,7 @@ export interface QueryString<Value> {
   get: (initialValue: Value) => Value;
   subscribe?: (
     callback: (value: Value) => void,
-    initialValue: Value,
+    initialValue: Value
   ) => Unsubscribe;
 }
 
@@ -65,11 +65,10 @@ function createQueryString<Value>(): QueryString<Value> {
           urlParams.getAll(key).length > 1
             ? urlParams.getAll(key)
             : initialValue instanceof Object &&
-                key in initialValue &&
-                typeof initialValue[key as keyof typeof initialValue] ===
-                  "number"
-              ? toNumberable(urlParams.get(key))
-              : urlParams.get(key);
+              key in initialValue &&
+              typeof initialValue[key as keyof typeof initialValue] === "number"
+            ? toNumberable(urlParams.get(key))
+            : urlParams.get(key);
       });
 
       return output as Value;
@@ -99,7 +98,7 @@ function createQueryString<Value>(): QueryString<Value> {
       }
       const urlParsed = queryString.parse(
         url.searchParams.toString(),
-        initialValue,
+        initialValue
       );
       const newValue = Object.assign({}, initialValue, urlParsed);
 
@@ -132,12 +131,12 @@ export function atomWithQueryString<Value extends object>(
     onPathnameChange,
     queryString = defaultQueryString as QueryString<Value>,
     getOnInit,
-  }: AtomWithQueryStringOptions<Value> = {},
+  }: AtomWithQueryStringOptions<Value> = {}
 ): WritableAtom<Value, [SetStateActionWithReset<Value>], void> &
   WithInitialValue<Value> {
   type Update = SetStateActionWithReset<Value>;
   const baseAtom = atom<Value>(
-    getOnInit ? queryString.get(initialValue) : initialValue,
+    getOnInit ? queryString.get(initialValue) : initialValue
   );
 
   baseAtom.onMount = (setAtom) => {
@@ -156,8 +155,8 @@ export function atomWithQueryString<Value extends object>(
         update === RESET
           ? initialValue
           : update instanceof Function
-            ? update(get(baseAtom))
-            : update;
+          ? update(get(baseAtom))
+          : update;
 
       set(baseAtom, nextValue);
       onValueChange?.(nextValue);
@@ -166,10 +165,10 @@ export function atomWithQueryString<Value extends object>(
         const url = new URL(window.location.href);
         const parsed = queryString.parse(
           url.searchParams.toString(),
-          initialValue,
+          initialValue
         );
         const searchParams = queryString.stringify(
-          Object.assign(parsed, nextValue),
+          Object.assign(parsed, nextValue)
         );
 
         const resultUrl =
@@ -181,10 +180,11 @@ export function atomWithQueryString<Value extends object>(
           window.history.pushState(null, "", resultUrl);
         }
       }
-    },
+    }
   );
-  Object.assign(anAtom, { init: initialValue });
-
+  (anAtom as WritableAtom<Value, [Update], void> & WithInitialValue<Value>)[
+    "init"
+  ] = initialValue;
   return anAtom as WritableAtom<Value, [Update], void> &
     WithInitialValue<Value>;
 }
