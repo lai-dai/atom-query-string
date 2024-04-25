@@ -51,8 +51,7 @@ function parseQueryString(searchParams, initialValue) {
   const output = {};
   const urlParams = new URLSearchParams(searchParams);
   (/* @__PURE__ */ new Set([...urlParams.keys()])).forEach((key) => {
-    const numberType = initialValue instanceof Object && key in initialValue && typeof initialValue[key] === "number" || initialValue instanceof Number;
-    output[key] = urlParams.getAll(key).length > 1 ? numberType ? toNumberable(urlParams.getAll(key)) : urlParams.getAll(key) : numberType ? toNumberable(urlParams.get(key)) : urlParams.get(key);
+    output[key] = urlParams.getAll(key).length > 1 ? urlParams.getAll(key) : initialValue instanceof Object && key in initialValue && typeof initialValue[key] === "number" ? toNumberable(urlParams.get(key)) : urlParams.get(key);
   });
   return output;
 }
