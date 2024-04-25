@@ -113,9 +113,11 @@ export const atomWithQueryString = <Value extends object>(
       const resultUrl =
         update === RESET ? url.pathname : url.pathname + "?" + searchParams;
 
-      window.history.pushState(null, "", resultUrl);
-
-      onPathnameChange?.(resultUrl);
+      if (onPathnameChange instanceof Function) {
+        onPathnameChange(resultUrl);
+      } else {
+        window.history.pushState(null, "", resultUrl);
+      }
     }
   );
 

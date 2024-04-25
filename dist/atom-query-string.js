@@ -92,8 +92,11 @@ var atomWithQueryString = (initialValue, {
         Object.assign(parsed, newValue)
       );
       const resultUrl = update === import_utils.RESET ? url.pathname : url.pathname + "?" + searchParams;
-      window.history.pushState(null, "", resultUrl);
-      onPathnameChange?.(resultUrl);
+      if (onPathnameChange instanceof Function) {
+        onPathnameChange(resultUrl);
+      } else {
+        window.history.pushState(null, "", resultUrl);
+      }
     }
   );
   anAtom.onMount = (setAtom) => {
