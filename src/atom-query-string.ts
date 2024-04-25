@@ -1,5 +1,4 @@
 import { atom } from "jotai";
-import type { WritableAtom } from "jotai";
 import { RESET } from "jotai/utils";
 
 type Unsubscribe = () => void;
@@ -8,10 +7,6 @@ type SetStateActionWithReset<Value> =
   | Value
   | typeof RESET
   | ((prev: Value) => Value);
-
-type WithInitialValue<Value> = {
-  init: Value;
-};
 
 export interface QueryString<Value> {
   parse: (str: string, initialValue: Value) => Value;
@@ -27,7 +22,7 @@ export interface AtomWithQueryStringOptions<Value> {
   onValueChange?: (value: Value) => void;
   onPathnameChange?: (pathname: string) => void;
   queryString?: QueryString<Value>;
-  getOnInit?: boolean;
+  // getOnInit?: boolean;
 }
 
 function isNumber(num: any) {
@@ -101,7 +96,7 @@ function createQueryString<Value>(): QueryString<Value> {
         initialValue
       );
       const newValue = Object.assign({}, initialValue, urlParsed);
-
+      console.log("newValue", newValue);
       return newValue;
     },
   };
@@ -129,36 +124,25 @@ export function atomWithQueryString<Value extends object>(
   {
     onValueChange,
     onPathnameChange,
-    queryString = defaultQueryString as QueryString<Value>,
-    getOnInit,
+    queryString = defaultQueryString as QueryString<Value>, // getOnInit,
   }: AtomWithQueryStringOptions<Value> = {}
-): WritableAtom<Value, [SetStateActionWithReset<Value>], void> &
-  WithInitialValue<Value> {
-  type Update = SetStateActionWithReset<Value>;
-  const baseAtom = atom<Value>(
-    getOnInit ? queryString.get(initialValue) : initialValue
-  );
-
-  baseAtom.onMount = (setAtom) => {
-    setAtom(queryString.get(initialValue));
-    let unsub: Unsubscribe | undefined;
-    if (queryString.subscribe) {
-      unsub = queryString.subscribe(setAtom, initialValue);
-    }
-    return unsub;
-  };
-
-  const anAtom = atom<Value, [Update], void>(
-    (get) => get(baseAtom),
-    (get, set, update, isPushState: boolean = true) => {
+) {
+  const anAtom = atom(
+    initialValue,
+    (
+      get,
+      set,
+      update: SetStateActionWithReset<Value>,
+      isPushState: boolean = true
+    ) => {
       const nextValue =
         update === RESET
           ? initialValue
           : update instanceof Function
-          ? update(get(baseAtom))
+          ? update(get(anAtom))
           : update;
 
-      set(baseAtom, nextValue);
+      set(anAtom, nextValue);
       onValueChange?.(nextValue);
 
       if (isPushState) {
@@ -182,9 +166,15 @@ export function atomWithQueryString<Value extends object>(
       }
     }
   );
-  (anAtom as WritableAtom<Value, [Update], void> & WithInitialValue<Value>)[
-    "init"
-  ] = initialValue;
-  return anAtom as WritableAtom<Value, [Update], void> &
-    WithInitialValue<Value>;
+
+  anAtom.onMount = (setAtom) => {
+    setAtom(queryString.get(initialValue), false);
+    let unsub: Unsubscribe | undefined;
+    if (queryString.subscribe) {
+      unsub = queryString.subscribe(setAtom, initialValue);
+    }
+    return unsub;
+  };
+
+  return anAtom;
 }

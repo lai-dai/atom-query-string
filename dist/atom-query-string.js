@@ -82,6 +82,7 @@ function createQueryString() {
         initialValue
       );
       const newValue = Object.assign({}, initialValue, urlParsed);
+      console.log("newValue", newValue);
       return newValue;
     }
   };
@@ -102,25 +103,14 @@ var defaultQueryString = createQueryString();
 function atomWithQueryString(initialValue, {
   onValueChange,
   onPathnameChange,
-  queryString = defaultQueryString,
-  getOnInit
+  queryString = defaultQueryString
+  // getOnInit,
 } = {}) {
-  const baseAtom = (0, import_jotai.atom)(
-    getOnInit ? queryString.get(initialValue) : initialValue
-  );
-  baseAtom.onMount = (setAtom) => {
-    setAtom(queryString.get(initialValue));
-    let unsub;
-    if (queryString.subscribe) {
-      unsub = queryString.subscribe(setAtom, initialValue);
-    }
-    return unsub;
-  };
   const anAtom = (0, import_jotai.atom)(
-    (get) => get(baseAtom),
+    initialValue,
     (get, set, update, isPushState = true) => {
-      const nextValue = update === import_utils.RESET ? initialValue : update instanceof Function ? update(get(baseAtom)) : update;
-      set(baseAtom, nextValue);
+      const nextValue = update === import_utils.RESET ? initialValue : update instanceof Function ? update(get(anAtom)) : update;
+      set(anAtom, nextValue);
       onValueChange?.(nextValue);
       if (isPushState) {
         const url = new URL(window.location.href);
@@ -140,7 +130,14 @@ function atomWithQueryString(initialValue, {
       }
     }
   );
-  anAtom["init"] = initialValue;
+  anAtom.onMount = (setAtom) => {
+    setAtom(queryString.get(initialValue), false);
+    let unsub;
+    if (queryString.subscribe) {
+      unsub = queryString.subscribe(setAtom, initialValue);
+    }
+    return unsub;
+  };
   return anAtom;
 }
 // Annotate the CommonJS export names for ESM import in node:
