@@ -22,7 +22,7 @@ export interface AtomWithQueryStringOptions<Value> {
   onValueChange?: (value: Value) => void;
   onPathnameChange?: (pathname: string) => void;
   queryString?: QueryString<Value>;
-  // getOnInit?: boolean;
+  getOnInit?: boolean;
 }
 
 function isNumber(num: any) {
@@ -96,7 +96,7 @@ function createQueryString<Value>(): QueryString<Value> {
         initialValue
       );
       const newValue = Object.assign({}, initialValue, urlParsed);
-      console.log("newValue", newValue);
+
       return newValue;
     },
   };
@@ -124,11 +124,15 @@ export function atomWithQueryString<Value extends object>(
   {
     onValueChange,
     onPathnameChange,
-    queryString = defaultQueryString as QueryString<Value>, // getOnInit,
+    queryString = defaultQueryString as QueryString<Value>,
+    getOnInit,
   }: AtomWithQueryStringOptions<Value> = {}
 ) {
+  const baseAtom = atom(
+    getOnInit ? queryString.get(initialValue) : initialValue
+  );
   const anAtom = atom(
-    initialValue,
+    (get) => get(baseAtom),
     (
       get,
       set,
@@ -139,10 +143,10 @@ export function atomWithQueryString<Value extends object>(
         update === RESET
           ? initialValue
           : update instanceof Function
-          ? update(get(anAtom))
+          ? update(get(baseAtom))
           : update;
 
-      set(anAtom, nextValue);
+      set(baseAtom, nextValue);
       onValueChange?.(nextValue);
 
       if (isPushState) {
@@ -168,7 +172,7 @@ export function atomWithQueryString<Value extends object>(
   );
 
   anAtom.onMount = (setAtom) => {
-    setAtom(queryString.get(initialValue), false);
+    if (!getOnInit) setAtom(queryString.get(initialValue), false);
     let unsub: Unsubscribe | undefined;
     if (queryString.subscribe) {
       unsub = queryString.subscribe(setAtom, initialValue);

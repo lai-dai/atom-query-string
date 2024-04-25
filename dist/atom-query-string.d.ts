@@ -13,9 +13,8 @@ interface AtomWithQueryStringOptions<Value> {
     onValueChange?: (value: Value) => void;
     onPathnameChange?: (pathname: string) => void;
     queryString?: QueryString<Value>;
+    getOnInit?: boolean;
 }
-declare function atomWithQueryString<Value extends object>(initialValue: Value, { onValueChange, onPathnameChange, queryString, }?: AtomWithQueryStringOptions<Value>): jotai.WritableAtom<Value, [update: SetStateActionWithReset<Value>, isPushState?: boolean | undefined], void> & {
-    init: Value;
-};
+declare function atomWithQueryString<Value extends object>(initialValue: Value, { onValueChange, onPathnameChange, queryString, getOnInit, }?: AtomWithQueryStringOptions<Value>): jotai.WritableAtom<Value, [update: SetStateActionWithReset<Value>, isPushState?: boolean | undefined], void>;
 
 export { AtomWithQueryStringOptions, QueryString, atomWithQueryString };

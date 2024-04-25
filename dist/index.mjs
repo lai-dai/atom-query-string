@@ -58,7 +58,6 @@ function createQueryString() {
         initialValue
       );
       const newValue = Object.assign({}, initialValue, urlParsed);
-      console.log("newValue", newValue);
       return newValue;
     }
   };
@@ -79,14 +78,17 @@ var defaultQueryString = createQueryString();
 function atomWithQueryString(initialValue, {
   onValueChange,
   onPathnameChange,
-  queryString = defaultQueryString
-  // getOnInit,
+  queryString = defaultQueryString,
+  getOnInit
 } = {}) {
+  const baseAtom = atom(
+    getOnInit ? queryString.get(initialValue) : initialValue
+  );
   const anAtom = atom(
-    initialValue,
+    (get) => get(baseAtom),
     (get, set, update, isPushState = true) => {
-      const nextValue = update === RESET ? initialValue : update instanceof Function ? update(get(anAtom)) : update;
-      set(anAtom, nextValue);
+      const nextValue = update === RESET ? initialValue : update instanceof Function ? update(get(baseAtom)) : update;
+      set(baseAtom, nextValue);
       onValueChange?.(nextValue);
       if (isPushState) {
         const url = new URL(window.location.href);
@@ -107,7 +109,8 @@ function atomWithQueryString(initialValue, {
     }
   );
   anAtom.onMount = (setAtom) => {
-    setAtom(queryString.get(initialValue), false);
+    if (!getOnInit)
+      setAtom(queryString.get(initialValue), false);
     let unsub;
     if (queryString.subscribe) {
       unsub = queryString.subscribe(setAtom, initialValue);
