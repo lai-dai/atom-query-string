@@ -1,17 +1,23 @@
-import * as jotai from 'jotai';
+import { WritableAtom } from 'jotai';
 import { RESET } from 'jotai/utils';
 
-type SetStateAction<S> = S | ((prevState: S) => S);
-interface QueryString {
-    parse: (str: string) => Record<string, any>;
-    stringify: (obj: Record<string, any>) => string;
+type Unsubscribe = () => void;
+type SetStateActionWithReset<Value> = Value | typeof RESET | ((prev: Value) => Value);
+type WithInitialValue<Value> = {
+    init: Value;
+};
+interface QueryString<Value> {
+    parse: (str: string, initialValue: Value) => Value;
+    stringify: (obj: Value) => string;
+    get: (initialValue: Value) => Value;
+    subscribe?: (callback: (value: Value) => void, initialValue: Value) => Unsubscribe;
 }
 interface AtomWithQueryStringOptions<Value> {
     onValueChange?: (value: Value) => void;
     onPathnameChange?: (pathname: string) => void;
-    queryString?: QueryString;
+    queryString?: QueryString<Value>;
     getOnInit?: boolean;
 }
-declare const atomWithQueryString: <Value extends object>(initialValue: Readonly<Value>, { onValueChange, onPathnameChange, queryString, getOnInit, }?: AtomWithQueryStringOptions<Value>) => jotai.WritableAtom<Value, [update: typeof RESET | SetStateAction<Value>], void>;
+declare function atomWithQueryString<Value extends object>(initialValue: Value, { onValueChange, onPathnameChange, queryString, getOnInit, }?: AtomWithQueryStringOptions<Value>): WritableAtom<Value, [SetStateActionWithReset<Value>], void> & WithInitialValue<Value>;
 
 export { AtomWithQueryStringOptions, QueryString, atomWithQueryString };

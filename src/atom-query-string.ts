@@ -1,17 +1,32 @@
 import { atom } from "jotai";
-import { RESET, atomWithReset } from "jotai/utils";
+import type { WritableAtom } from "jotai";
+import { RESET } from "jotai/utils";
 
-type SetStateAction<S> = S | ((prevState: S) => S);
+type Unsubscribe = () => void;
 
-export interface QueryString {
-  parse: (str: string) => Record<string, any>;
-  stringify: (obj: Record<string, any>) => string;
+type SetStateActionWithReset<Value> =
+  | Value
+  | typeof RESET
+  | ((prev: Value) => Value);
+
+type WithInitialValue<Value> = {
+  init: Value;
+};
+
+export interface QueryString<Value> {
+  parse: (str: string, initialValue: Value) => Value;
+  stringify: (obj: Value) => string;
+  get: (initialValue: Value) => Value;
+  subscribe?: (
+    callback: (value: Value) => void,
+    initialValue: Value,
+  ) => Unsubscribe;
 }
 
 export interface AtomWithQueryStringOptions<Value> {
   onValueChange?: (value: Value) => void;
   onPathnameChange?: (pathname: string) => void;
-  queryString?: QueryString;
+  queryString?: QueryString<Value>;
   getOnInit?: boolean;
 }
 
@@ -38,115 +53,138 @@ function toNumberable(value: any): any {
   }
 }
 
-function parseQueryString<Value>(searchParams: string, initialValue: Value) {
-  const output: Record<string, any> = {};
-  const urlParams = new URLSearchParams(searchParams);
+function createQueryString<Value>(): QueryString<Value> {
+  const queryString: QueryString<Value> = {
+    parse: (str, initialValue) => {
+      const output: Record<string, any> = {};
+      const urlParams = new URLSearchParams(str);
 
-  // Set will return only unique keys()
-  new Set([...urlParams.keys()]).forEach((key) => {
-    output[key] =
-      urlParams.getAll(key).length > 1
-        ? urlParams.getAll(key)
-        : initialValue instanceof Object &&
-          key in initialValue &&
-          typeof initialValue[key as keyof typeof initialValue] === "number"
-        ? toNumberable(urlParams.get(key))
-        : urlParams.get(key);
-  });
+      // Set will return only unique keys()
+      new Set([...urlParams.keys()]).forEach((key) => {
+        output[key] =
+          urlParams.getAll(key).length > 1
+            ? urlParams.getAll(key)
+            : initialValue instanceof Object &&
+                key in initialValue &&
+                typeof initialValue[key as keyof typeof initialValue] ===
+                  "number"
+              ? toNumberable(urlParams.get(key))
+              : urlParams.get(key);
+      });
 
-  return output;
-}
+      return output as Value;
+    },
+    stringify: (obj) => {
+      const output = Object.entries(obj as Record<string, any>)
+        .flatMap(([key, value]) => {
+          if (Array.isArray(value)) {
+            return value.map((item) => {
+              if (item == undefined || item == null) return;
+              return encodeURIComponent(key) + "=" + encodeURIComponent(item);
+            });
+          }
+          if (value == undefined || value == null) return;
+          return encodeURIComponent(key) + "=" + encodeURIComponent(value);
+        })
+        .join("&");
+      return output;
+    },
+    get: (initialValue) => {
+      const url = new URL(window.location.href);
 
-function stringifyQueryString(obj: Record<string, any>) {
-  return Object.entries(obj)
-    .flatMap(([key, value]) => {
-      if (Array.isArray(value)) {
-        return value.map((item) => {
-          if (item == undefined || item == null) return;
-          return encodeURIComponent(key) + "=" + encodeURIComponent(item);
-        });
+      for (const k of url.searchParams.keys()) {
+        if (!(k in (initialValue as Record<string, any>))) {
+          url.searchParams.delete(k);
+        }
       }
-      if (value == undefined || value == null) return;
-      return encodeURIComponent(key) + "=" + encodeURIComponent(value);
-    })
-    .join("&");
-}
+      const urlParsed = queryString.parse(
+        url.searchParams.toString(),
+        initialValue,
+      );
+      const newValue = Object.assign({}, initialValue, urlParsed);
 
-function createQueryString<Value>(initialValue: Value): QueryString {
-  return {
-    parse: (searchParams) =>
-      parseQueryString<Value>(searchParams, initialValue),
-    stringify: stringifyQueryString,
+      return newValue;
+    },
   };
+  if (
+    typeof window !== "undefined" &&
+    typeof window.addEventListener === "function"
+  ) {
+    queryString.subscribe = (callback, initialValue) => {
+      const popstateEventCallback = (e: PopStateEvent) => {
+        callback(queryString.get(initialValue));
+      };
+      window.addEventListener("popstate", popstateEventCallback);
+      return () => {
+        window.removeEventListener("popstate", popstateEventCallback);
+      };
+    };
+  }
+  return queryString;
 }
 
-export const atomWithQueryString = <Value extends object>(
-  initialValue: Readonly<Value>,
+const defaultQueryString = createQueryString();
+
+export function atomWithQueryString<Value extends object>(
+  initialValue: Value,
   {
     onValueChange,
     onPathnameChange,
-    queryString = createQueryString<Value>(initialValue),
+    queryString = defaultQueryString as QueryString<Value>,
     getOnInit,
-  }: AtomWithQueryStringOptions<Value> = {}
-) => {
-  const getValueWithQueryString = <Value extends object>(
-    initialValue: Value
-  ) => {
-    const url = new URL(window.location.href);
-
-    for (const k of url.searchParams.keys()) {
-      if (!(k in initialValue)) {
-        url.searchParams.delete(k);
-      }
-    }
-    const parsed = queryString.parse(url.searchParams.toString());
-
-    return Object.assign({}, initialValue, parsed);
-  };
-  const baseAtom = atomWithReset<Value>(
-    getOnInit ? getValueWithQueryString<Value>(initialValue) : initialValue
+  }: AtomWithQueryStringOptions<Value> = {},
+): WritableAtom<Value, [SetStateActionWithReset<Value>], void> &
+  WithInitialValue<Value> {
+  type Update = SetStateActionWithReset<Value>;
+  const baseAtom = atom<Value>(
+    getOnInit ? queryString.get(initialValue) : initialValue,
   );
 
-  const anAtom = atom(
+  baseAtom.onMount = (setAtom) => {
+    setAtom(queryString.get(initialValue));
+    let unsub: Unsubscribe | undefined;
+    if (queryString.subscribe) {
+      unsub = queryString.subscribe(setAtom, initialValue);
+    }
+    return unsub;
+  };
+
+  const anAtom = atom<Value, [Update], void>(
     (get) => get(baseAtom),
-    (get, set, update: SetStateAction<Value> | typeof RESET) => {
-      const newValue =
+    (get, set, update, isPushState: boolean = true) => {
+      const nextValue =
         update === RESET
           ? initialValue
           : update instanceof Function
-          ? update(get(baseAtom))
-          : update;
+            ? update(get(baseAtom))
+            : update;
 
-      set(baseAtom, newValue);
-      onValueChange?.(newValue);
+      set(baseAtom, nextValue);
+      onValueChange?.(nextValue);
 
-      const url = new URL(window.location.href);
-      const parsed = queryString.parse(url.searchParams.toString());
-      const searchParams = queryString.stringify(
-        Object.assign(parsed, newValue)
-      );
+      if (isPushState) {
+        const url = new URL(window.location.href);
+        const parsed = queryString.parse(
+          url.searchParams.toString(),
+          initialValue,
+        );
+        const searchParams = queryString.stringify(
+          Object.assign(parsed, nextValue),
+        );
 
-      const resultUrl =
-        update === RESET ? url.pathname : url.pathname + "?" + searchParams;
+        const resultUrl =
+          update === RESET ? url.pathname : url.pathname + "?" + searchParams;
 
-      if (onPathnameChange instanceof Function) {
-        onPathnameChange(resultUrl);
-      } else {
-        window.history.pushState(null, "", resultUrl);
+        if (onPathnameChange instanceof Function) {
+          onPathnameChange(resultUrl);
+        } else {
+          window.history.pushState(null, "", resultUrl);
+        }
       }
-    }
+    },
   );
+  Object.assign(anAtom, { init: initialValue });
 
-  anAtom.onMount = (setAtom) => {
-    const handlePopState = () => {
-      setAtom(getValueWithQueryString(initialValue));
-    };
-    if (!getOnInit) {
-      handlePopState();
-    }
-    window.addEventListener("popstate", handlePopState);
-    return () => window.removeEventListener("popstate", handlePopState);
-  };
-
-  return anAtom;
-};
+  return anAtom as WritableAtom<Value, [Update], void> &
+    WithInitialValue<Value>;
+}
