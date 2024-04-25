@@ -10,8 +10,8 @@ interface AtomWithQueryStringOptions<Value> {
     onValueChange?: (value: Value) => void;
     onPathnameChange?: (pathname: string) => void;
     queryString?: QueryString;
-    isSyncPathname?: boolean;
+    getOnInit?: boolean;
 }
-declare const atomWithQueryString: <Value extends object>(initialValue: Readonly<Value>, { onValueChange, onPathnameChange, queryString, isSyncPathname, }?: AtomWithQueryStringOptions<Value>) => jotai.WritableAtom<Value, [update: typeof RESET | SetStateAction<Value>], void>;
+declare const atomWithQueryString: <Value extends object>(initialValue: Readonly<Value>, { onValueChange, onPathnameChange, queryString, getOnInit, }?: AtomWithQueryStringOptions<Value>) => jotai.WritableAtom<Value, [update: typeof RESET | SetStateAction<Value>], void>;
 
 export { AtomWithQueryStringOptions, QueryString, atomWithQueryString };

@@ -12,7 +12,7 @@ export interface AtomWithQueryStringOptions<Value> {
   onValueChange?: (value: Value) => void;
   onPathnameChange?: (pathname: string) => void;
   queryString?: QueryString;
-  isSyncPathname?: boolean;
+  getOnInit?: boolean;
 }
 
 function isNumber(num: any) {
@@ -86,10 +86,26 @@ export const atomWithQueryString = <Value extends object>(
     onValueChange,
     onPathnameChange,
     queryString = createQueryString<Value>(initialValue),
-    isSyncPathname = true,
+    getOnInit,
   }: AtomWithQueryStringOptions<Value> = {}
 ) => {
-  const baseAtom = atomWithReset<Value>(initialValue);
+  const getValueWithQueryString = <Value extends object>(
+    initialValue: Value
+  ) => {
+    const url = new URL(window.location.href);
+
+    for (const k of url.searchParams.keys()) {
+      if (!(k in initialValue)) {
+        url.searchParams.delete(k);
+      }
+    }
+    const parsed = queryString.parse(url.searchParams.toString());
+
+    return Object.assign({}, initialValue, parsed);
+  };
+  const baseAtom = atomWithReset<Value>(
+    getOnInit ? getValueWithQueryString<Value>(initialValue) : initialValue
+  );
 
   const anAtom = atom(
     (get) => get(baseAtom),
@@ -123,22 +139,11 @@ export const atomWithQueryString = <Value extends object>(
 
   anAtom.onMount = (setAtom) => {
     const handlePopState = () => {
-      if (isSyncPathname) {
-        const url = new URL(window.location.href);
-
-        for (const k of url.searchParams.keys()) {
-          if (!(k in initialValue)) {
-            url.searchParams.delete(k);
-          }
-        }
-        const parsed = queryString.parse(url.searchParams.toString());
-
-        const value = Object.assign({}, initialValue, parsed);
-
-        setAtom(value);
-      }
+      setAtom(getValueWithQueryString(initialValue));
     };
-    handlePopState();
+    if (!getOnInit) {
+      handlePopState();
+    }
     window.addEventListener("popstate", handlePopState);
     return () => window.removeEventListener("popstate", handlePopState);
   };

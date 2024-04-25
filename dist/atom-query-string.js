@@ -77,9 +77,21 @@ var atomWithQueryString = (initialValue, {
   onValueChange,
   onPathnameChange,
   queryString = createQueryString(initialValue),
-  isSyncPathname = true
+  getOnInit
 } = {}) => {
-  const baseAtom = (0, import_utils.atomWithReset)(initialValue);
+  const getValueWithQueryString = (initialValue2) => {
+    const url = new URL(window.location.href);
+    for (const k of url.searchParams.keys()) {
+      if (!(k in initialValue2)) {
+        url.searchParams.delete(k);
+      }
+    }
+    const parsed = queryString.parse(url.searchParams.toString());
+    return Object.assign({}, initialValue2, parsed);
+  };
+  const baseAtom = (0, import_utils.atomWithReset)(
+    getOnInit ? getValueWithQueryString(initialValue) : initialValue
+  );
   const anAtom = (0, import_jotai.atom)(
     (get) => get(baseAtom),
     (get, set, update) => {
@@ -101,19 +113,11 @@ var atomWithQueryString = (initialValue, {
   );
   anAtom.onMount = (setAtom) => {
     const handlePopState = () => {
-      if (isSyncPathname) {
-        const url = new URL(window.location.href);
-        for (const k of url.searchParams.keys()) {
-          if (!(k in initialValue)) {
-            url.searchParams.delete(k);
-          }
-        }
-        const parsed = queryString.parse(url.searchParams.toString());
-        const value = Object.assign({}, initialValue, parsed);
-        setAtom(value);
-      }
+      setAtom(getValueWithQueryString(initialValue));
     };
-    handlePopState();
+    if (!getOnInit) {
+      handlePopState();
+    }
     window.addEventListener("popstate", handlePopState);
     return () => window.removeEventListener("popstate", handlePopState);
   };
