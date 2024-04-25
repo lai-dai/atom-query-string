@@ -1,0 +1,48 @@
+{
+  "name": "@lai-dai/atom-query-string",
+  "version": "0.1.0",
+  "description": "atom with query-string",
+  "scripts": {
+    "build": "tsup ./src"
+  },
+  "homepage": "https://github.com/lai-dai/atom-query-string",
+  "url": "https://github.com/lai-dai/atom-query-string/issue",
+  "email": "laidai9966@gmail.com",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/lai-dai/atom-query-string.git"
+  },
+  "keywords": [
+    "react",
+    "atom",
+    "querystring",
+    "atomWithQueryString"
+  ],
+  "author": "lai dai",
+  "license": "ISC",
+  "devDependencies": {
+    "@types/react": "^18.2.77",
+    "jotai": "^2.8.0",
+    "react": "^18.2.0",
+    "tsup": "^6.7.0",
+    "typescript": "^5.1.3"
+  },
+  "files": [
+    "dist",
+    "package.json"
+  ],
+  "exports": {
+    ".": {
+      "require": "./dist/index.js",
+      "import": "./dist/index.mjs",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "main": "./dist/index.js",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "peerDependencies": {
+    "react": "^18",
+    "jotai": "^2"
+  }
+}
