@@ -1,4 +1,4 @@
-import { atom } from "jotai";
+import { WritableAtom, atom } from "jotai";
 import { RESET } from "jotai/utils";
 
 type Unsubscribe = () => void;
@@ -7,6 +7,10 @@ type SetStateActionWithReset<Value> =
   | Value
   | typeof RESET
   | ((prev: Value) => Value);
+
+type WithInitialValue<Value> = {
+  initialValue: Value;
+};
 
 export interface QueryString<Value> {
   parse: (str: string, initialValue: Value) => Value;
@@ -127,11 +131,12 @@ export function atomWithQueryString<Value extends object>(
     queryString = defaultQueryString as QueryString<Value>,
     getOnInit,
   }: AtomWithQueryStringOptions<Value> = {}
-) {
+): WritableAtom<Value, [SetStateActionWithReset<Value>, boolean], void> &
+  WithInitialValue<Value> {
   const baseAtom = atom(
     getOnInit ? queryString.get(initialValue) : initialValue
   );
-  const anAtom = atom(
+  const anAtom = atom<Value, [SetStateActionWithReset<Value>, boolean], void>(
     (get) => get(baseAtom),
     (
       get,
@@ -180,5 +185,12 @@ export function atomWithQueryString<Value extends object>(
     return unsub;
   };
 
-  return anAtom;
+  (anAtom as Record<string, any>)["initialValue"] = initialValue;
+
+  return anAtom as WritableAtom<
+    Value,
+    [SetStateActionWithReset<Value>, boolean],
+    void
+  > &
+    WithInitialValue<Value>;
 }

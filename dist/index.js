@@ -143,6 +143,7 @@ function atomWithQueryString(initialValue, {
     }
     return unsub;
   };
+  anAtom["initialValue"] = initialValue;
   return anAtom;
 }
 // Annotate the CommonJS export names for ESM import in node:
