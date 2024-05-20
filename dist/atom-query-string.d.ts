@@ -1,4 +1,4 @@
-import { WritableAtom } from 'jotai';
+import * as jotai from 'jotai';
 import { RESET } from 'jotai/utils';
 
 type Unsubscribe = () => void;
@@ -15,6 +15,6 @@ interface AtomWithQueryStringOptions<Value> {
     queryString?: QueryString<Value>;
     getOnInit?: boolean;
 }
-declare function atomWithQueryString<Value extends object>(initialValue: Value, { onValueChange, onPathnameChange, queryString, getOnInit, }?: AtomWithQueryStringOptions<Value>): WritableAtom<Value, [update: SetStateActionWithReset<Value>, isPushState?: boolean | undefined], void>;
+declare function atomWithQueryString<Value extends object>(initialValue: Value, { onValueChange, onPathnameChange, queryString, getOnInit, }?: AtomWithQueryStringOptions<Value>): jotai.WritableAtom<Value, [update: SetStateActionWithReset<Value>, isPushState?: boolean | undefined], void>;
 
 export { AtomWithQueryStringOptions, QueryString, atomWithQueryString };

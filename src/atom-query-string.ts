@@ -1,4 +1,4 @@
-import { WritableAtom, atom } from "jotai";
+import { atom } from "jotai";
 import { RESET } from "jotai/utils";
 
 type Unsubscribe = () => void;
@@ -25,23 +25,15 @@ export interface AtomWithQueryStringOptions<Value> {
   getOnInit?: boolean;
 }
 
-function isNumber(num: any) {
-  if (typeof num === "number") {
-    return num - num === 0;
-  }
-  if (typeof num === "string" && num.trim() !== "") {
-    return Number.isFinite ? Number.isFinite(+num) : isFinite(+num);
-  }
-  return false;
-}
-
 function toNumberable(value: any): any {
   if (Array.isArray(value)) {
     return value.map((item: any) => toNumberable(item));
   }
   switch (typeof value) {
     case "string":
-      return isNumber(value) ? Number(value) : value;
+      return (Number.isFinite ? Number.isFinite(+value) : isFinite(+value))
+        ? Number(value)
+        : value;
 
     default:
       return value;
@@ -84,7 +76,9 @@ function createQueryString<Value>(): QueryString<Value> {
       return output;
     },
     get: (initialValue) => {
-      const url = new URL(window.location.href);
+      const url = new URL(
+        typeof window !== "undefined" ? window.location.href : ""
+      );
 
       for (const k of url.searchParams.keys()) {
         if (!(k in (initialValue as Record<string, any>))) {
@@ -149,7 +143,7 @@ export function atomWithQueryString<Value extends object>(
       set(baseAtom, nextValue);
       onValueChange?.(nextValue);
 
-      if (isPushState) {
+      if (isPushState && typeof window !== "undefined") {
         const url = new URL(window.location.href);
         const parsed = queryString.parse(
           url.searchParams.toString(),
