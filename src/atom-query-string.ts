@@ -76,22 +76,28 @@ function createQueryString<Value>(): QueryString<Value> {
       return output;
     },
     get: (initialValue) => {
-      const url = new URL(
-        typeof window !== "undefined" ? window.location.href : ""
-      );
+      try {
+        if (typeof window !== "undefined" && isValidUrl(window.location.href)) {
+          const url = new URL(window.location.href);
 
-      for (const k of url.searchParams.keys()) {
-        if (!(k in (initialValue as Record<string, any>))) {
-          url.searchParams.delete(k);
+          for (const k of url.searchParams.keys()) {
+            if (!(k in (initialValue as Record<string, any>))) {
+              url.searchParams.delete(k);
+            }
+          }
+          const urlParsed = queryString.parse(
+            url.searchParams.toString(),
+            initialValue
+          );
+          const newValue = Object.assign({}, initialValue, urlParsed);
+
+          return newValue;
         }
+        return initialValue;
+      } catch (error) {
+        console.error(error);
+        return initialValue;
       }
-      const urlParsed = queryString.parse(
-        url.searchParams.toString(),
-        initialValue
-      );
-      const newValue = Object.assign({}, initialValue, urlParsed);
-
-      return newValue;
     },
   };
   if (
@@ -143,23 +149,31 @@ export function atomWithQueryString<Value extends object>(
       set(baseAtom, nextValue);
       onValueChange?.(nextValue);
 
-      if (isPushState && typeof window !== "undefined") {
-        const url = new URL(window.location.href);
-        const parsed = queryString.parse(
-          url.searchParams.toString(),
-          initialValue
-        );
-        const searchParams = queryString.stringify(
-          Object.assign(parsed, nextValue)
-        );
+      if (
+        isPushState &&
+        typeof window !== "undefined" &&
+        isValidUrl(window.location.href)
+      ) {
+        try {
+          const url = new URL(window.location.href);
+          const parsed = queryString.parse(
+            url.searchParams.toString(),
+            initialValue
+          );
+          const searchParams = queryString.stringify(
+            Object.assign(parsed, nextValue)
+          );
 
-        const resultUrl =
-          update === RESET ? url.pathname : url.pathname + "?" + searchParams;
+          const resultUrl =
+            update === RESET ? url.pathname : url.pathname + "?" + searchParams;
 
-        if (onPathnameChange instanceof Function) {
-          onPathnameChange(resultUrl);
-        } else {
-          window.history.pushState(null, "", resultUrl);
+          if (onPathnameChange instanceof Function) {
+            onPathnameChange(resultUrl);
+          } else {
+            window.history.pushState(null, "", resultUrl);
+          }
+        } catch (error) {
+          console.error(error);
         }
       }
     }
@@ -175,4 +189,13 @@ export function atomWithQueryString<Value extends object>(
   };
 
   return anAtom;
+}
+
+function isValidUrl(str: string) {
+  try {
+    new URL(str);
+    return true;
+  } catch (err) {
+    return false;
+  }
 }

@@ -38,20 +38,26 @@ function createQueryString() {
       return output;
     },
     get: (initialValue) => {
-      const url = new URL(
-        typeof window !== "undefined" ? window.location.href : ""
-      );
-      for (const k of url.searchParams.keys()) {
-        if (!(k in initialValue)) {
-          url.searchParams.delete(k);
+      try {
+        if (typeof window !== "undefined" && isValidUrl(window.location.href)) {
+          const url = new URL(window.location.href);
+          for (const k of url.searchParams.keys()) {
+            if (!(k in initialValue)) {
+              url.searchParams.delete(k);
+            }
+          }
+          const urlParsed = queryString.parse(
+            url.searchParams.toString(),
+            initialValue
+          );
+          const newValue = Object.assign({}, initialValue, urlParsed);
+          return newValue;
         }
+        return initialValue;
+      } catch (error) {
+        console.error(error);
+        return initialValue;
       }
-      const urlParsed = queryString.parse(
-        url.searchParams.toString(),
-        initialValue
-      );
-      const newValue = Object.assign({}, initialValue, urlParsed);
-      return newValue;
     }
   };
   if (typeof window !== "undefined" && typeof window.addEventListener === "function") {
@@ -83,20 +89,24 @@ function atomWithQueryString(initialValue, {
       const nextValue = update === RESET ? initialValue : update instanceof Function ? update(get(baseAtom)) : update;
       set(baseAtom, nextValue);
       onValueChange?.(nextValue);
-      if (isPushState && typeof window !== "undefined") {
-        const url = new URL(window.location.href);
-        const parsed = queryString.parse(
-          url.searchParams.toString(),
-          initialValue
-        );
-        const searchParams = queryString.stringify(
-          Object.assign(parsed, nextValue)
-        );
-        const resultUrl = update === RESET ? url.pathname : url.pathname + "?" + searchParams;
-        if (onPathnameChange instanceof Function) {
-          onPathnameChange(resultUrl);
-        } else {
-          window.history.pushState(null, "", resultUrl);
+      if (isPushState && typeof window !== "undefined" && isValidUrl(window.location.href)) {
+        try {
+          const url = new URL(window.location.href);
+          const parsed = queryString.parse(
+            url.searchParams.toString(),
+            initialValue
+          );
+          const searchParams = queryString.stringify(
+            Object.assign(parsed, nextValue)
+          );
+          const resultUrl = update === RESET ? url.pathname : url.pathname + "?" + searchParams;
+          if (onPathnameChange instanceof Function) {
+            onPathnameChange(resultUrl);
+          } else {
+            window.history.pushState(null, "", resultUrl);
+          }
+        } catch (error) {
+          console.error(error);
         }
       }
     }
@@ -111,6 +121,14 @@ function atomWithQueryString(initialValue, {
     return unsub;
   };
   return anAtom;
+}
+function isValidUrl(str) {
+  try {
+    new URL(str);
+    return true;
+  } catch (err) {
+    return false;
+  }
 }
 export {
   atomWithQueryString
